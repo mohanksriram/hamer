@@ -72,7 +72,7 @@ class DefaultPredictor_Lazy:
             self.metadata = MetadataCatalog.get(test_dataset)
         assert self.input_format in ["RGB", "BGR"], self.input_format
 
-    def __call__(self, original_image):
+    def __call__(self, original_images):
         """
         Args:
             original_image (np.ndarray): an image of shape (H, W, C) (in BGR order).
@@ -83,11 +83,23 @@ class DefaultPredictor_Lazy:
                 See :doc:`/tutorials/models` for details about the format.
         """
         with torch.no_grad():
-            if self.input_format == "RGB":
-                original_image = original_image[:, :, ::-1]
-            height, width = original_image.shape[:2]
-            image = self.aug(T.AugInput(original_image)).apply_image(original_image)
-            image = torch.as_tensor(image.astype("float32").transpose(2, 0, 1))
-            inputs = {"image": image, "height": height, "width": width}
-            predictions = self.model([inputs])[0]
+            inputs = []
+            for original_image in original_images:
+                if self.input_format == "RGB":
+                    original_image = original_image[:, :, ::-1]
+                height, width = original_image.shape[:2]
+                image = self.aug(T.AugInput(original_image)).apply_image(original_image)
+                image = torch.as_tensor(image.astype("float32").transpose(2, 0, 1))
+                input = {"image": image, "height": height, "width": width}
+                inputs.append(input)    
+            predictions = self.model(inputs)
             return predictions
+            # if self.input_format == "RGB":
+            #     original_image = original_image[:, :, ::-1]
+            # height, width = original_image.shape[:2]
+            # image = self.aug(T.AugInput(original_image)).apply_image(original_image)
+            # image = torch.as_tensor(image.astype("float32").transpose(2, 0, 1))
+            # inputs = {"image": image, "height": height, "width": width}
+            # print(f"running human detector on {batch_size} frames")
+            # predictions = self.model([inputs]*batch_size)[0]
+            # return predictions
